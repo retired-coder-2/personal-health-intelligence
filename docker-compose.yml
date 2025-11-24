@@ -1,0 +1,165 @@
+version: '3.8'
+
+# 🐳 DOCKER COMPOSE CONFIGURATION
+# This file defines all services that run together:
+# - PostgreSQL database
+# - Streamlit web apps (one for each kingdom)
+# - Airflow scheduler and webserver
+# - Shared volumes for data persistence
+
+services:
+  # 💾 DATABASE SERVICE
+  # PostgreSQL database for storing all application data
+  postgres:
+    image: postgres:15-alpine
+    container_name: health-intelligence-db
+    environment:
+      POSTGRES_USER: healthuser
+      POSTGRES_PASSWORD: healthpass
+      POSTGRES_DB: health_intelligence
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./shared/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - health-network
+
+  # 🗂️ KINGDOM 1: FILE COMMANDER
+  file-commander:
+    build:
+      context: .
+      dockerfile: kingdoms/file_commander/Dockerfile
+    container_name: file-commander
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://healthuser:healthpass@postgres:5432/health_intelligence
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./kingdoms/file_commander:/app
+      - file_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+    command: streamlit run src/app.py
+
+  # 🏃 KINGDOM 2: HEALTH TRACKER
+  health-tracker:
+    build:
+      context: .
+      dockerfile: kingdoms/health_tracker/Dockerfile
+    container_name: health-tracker
+    ports:
+      - "8502:8501"
+    environment:
+      - DATABASE_URL=postgresql://healthuser:healthpass@postgres:5432/health_intelligence
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./kingdoms/health_tracker:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+    command: streamlit run src/app.py
+
+  # 🍎 KINGDOM 3: MOOD FOOD CLARITY
+  mood-food-clarity:
+    build:
+      context: .
+      dockerfile: kingdoms/mood_food_clarity/Dockerfile
+    container_name: mood-food-clarity
+    ports:
+      - "8503:8501"
+    environment:
+      - DATABASE_URL=postgresql://healthuser:healthpass@postgres:5432/health_intelligence
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./kingdoms/mood_food_clarity:/app
+      - ml_models:/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+    command: streamlit run src/app.py
+
+  # ⏰ AIRFLOW SCHEDULER
+  # Runs scheduled tasks (DAGs) at specified intervals
+  airflow-scheduler:
+    image: apache/airflow:2.8.0-python3.11
+    container_name: airflow-scheduler
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://healthuser:healthpass@postgres:5432/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=your-secret-key-change-this
+    volumes:
+      - ./docker/airflow/dags:/opt/airflow/dags
+      - ./docker/airflow/logs:/opt/airflow/logs
+      - ./docker/airflow/plugins:/opt/airflow/plugins
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+    command: scheduler
+
+  # 🌐 AIRFLOW WEBSERVER
+  # Web UI for monitoring and managing scheduled tasks
+  airflow-webserver:
+    image: apache/airflow:2.8.0-python3.11
+    container_name: airflow-webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://healthuser:healthpass@postgres:5432/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=your-secret-key-change-this
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./docker/airflow/dags:/opt/airflow/dags
+      - ./docker/airflow/logs:/opt/airflow/logs
+      - ./docker/airflow/plugins:/opt/airflow/plugins
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+    command: webserver
+
+# 📦 VOLUMES
+# Persistent storage that survives container restarts
+volumes:
+  postgres_data:
+    driver: local
+  file_data:
+    driver: local
+  ml_models:
+    driver: local
+
+# 🌐 NETWORKS
+# All services communicate through this network
+networks:
+  health-network:
+    driver: bridge
+
+# 📝 USAGE:
+# Start all services:     docker-compose up -d
+# Stop all services:      docker-compose down
+# View logs:              docker-compose logs -f
+# Rebuild:                docker-compose build --no-cache
+# Access services:
+#   - File Commander:     http://localhost:8501
+#   - Health Tracker:     http://localhost:8502
+#   - Mood Food Clarity:  http://localhost:8503
+#   - Airflow UI:         http://localhost:8080 (user: admin, pass: admin)
+#   - PostgreSQL:         localhost:5432
