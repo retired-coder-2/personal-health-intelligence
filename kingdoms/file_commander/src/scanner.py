@@ -94,3 +94,4 @@ def build_file_catalog(root: Path) -> pd.DataFrame:
     file_catalog = pd.DataFrame.from_records(file_records) [expected_column_order]
 
     return file_catalog
+
