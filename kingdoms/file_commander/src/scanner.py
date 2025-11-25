@@ -2,10 +2,15 @@
 
 """
 This module walks through a folder tree and returns every file path,
-forming the foundation for our file catalog pipeline.
+then turns those paths into a DataFrame that describes each file with
+size and timestamps for our file catalog pipeline.
 """
 
 from pathlib import Path
+from datetime import datetime
+from typing import Iterable
+
+import pandas as pd
 
 
 def list_files(root: Path) -> list[Path]:
@@ -38,3 +43,54 @@ def list_files(root: Path) -> list[Path]:
             file_paths.append(candidate_path)
 
     return file_paths
+
+def build_file_catalog(root: Path) -> pd.DataFrame:
+    """
+    Because we want a table-like catalog of our files that is easy to query,
+    this function walks the directory tree starting at `root`, collects
+    metadata for each file, and returns a pandas DataFrame.
+
+    Each row in the DataFrame describes one file with columns:
+      - path: full path to the file (string)
+      - directory: parent directory of the file (string)
+      - name: file name with extension
+      - extension: file extension (e.g. ".txt", ".pdf")
+      - size_bytes: size of the file in bytes (integer)
+      - created_at: file creation time as a datetime
+      - modified_at: last modified time as a datetime
+    """
+    root_path =Path(root)
+
+    file_paths: list[Path] = list_files(root_path)
+
+    file_records: list[dict] = []
+
+    for file_path in file_paths:
+        file_stat = file_path.stat()
+
+        file_record = {
+            "path": str(file_path),
+            "directory": str(file_path.parent),
+            "name": file_path.name,
+            "extension": file_path.suffix.lower(),
+            "size_bytes": file_stat.st_size,
+            "created_at": datetime.fromtimestamp(file_stat.st_ctime),
+            "modified_at": datetime.fromtimestamp(file_stat.st_mtime)
+        }
+
+        file_records.append(file_record)
+
+
+    expected_column_order = [
+        "path",
+        "directory",
+        "name",
+        "extension",
+        "size_bytes",
+        "created_at",
+        "modified_at",
+    ]
+
+    file_catalog = pd.DataFrame.from_records(file_records) [expected_column_order]
+
+    return file_catalog
