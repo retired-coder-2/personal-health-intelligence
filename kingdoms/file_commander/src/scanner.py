@@ -8,7 +8,7 @@ size and timestamps for our file catalog pipeline.
 
 from pathlib import Path
 from datetime import datetime
-from typing import Iterable
+# from typing import Iterable
 
 import pandas as pd
 
@@ -67,12 +67,14 @@ def build_file_catalog(root: Path) -> pd.DataFrame:
 
     for file_path in file_paths:
         file_stat = file_path.stat()
+        file_extension = file_path.suffix.lower()
 
         file_record = {
             "path": str(file_path),
             "directory": str(file_path.parent),
             "name": file_path.name,
-            "extension": file_path.suffix.lower(),
+            "extension": file_extension,
+            "file_type": classify_file_type(file_extension),
             "size_bytes": file_stat.st_size,
             "created_at": datetime.fromtimestamp(file_stat.st_ctime),
             "modified_at": datetime.fromtimestamp(file_stat.st_mtime)
@@ -86,6 +88,7 @@ def build_file_catalog(root: Path) -> pd.DataFrame:
         "directory",
         "name",
         "extension",
+        "file_type",
         "size_bytes",
         "created_at",
         "modified_at",
@@ -95,3 +98,50 @@ def build_file_catalog(root: Path) -> pd.DataFrame:
 
     return file_catalog
 
+
+
+def classify_file_type(extension: str) -> str:
+    """
+    Because we want to group files by their general purpose instead of just
+    their raw extension, this helper takes a file extension like ".jpg"
+    and returns a broader category such as "image" or "code".
+    """
+
+    normalized_extension = extension.lower()
+
+    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+    video_extensions = {".mp4", ".mkv", ".mov", ".avi"}
+    audio_extensions = {".mp3", ".wav", ".flac", ".aac"}
+    document_extensions = {".txt", ".md", ".pdf", ".doc", ".docx", ".rtf"}
+    data_extensions = {".csv", ".tsv", ".xls", ".xlsx", ".parquet", ".json"}
+    code_extensions = {
+        ".py",
+        ".js",
+        ".ts",
+        ".java",
+        ".c",
+        ".cpp",
+        ".go",
+        ".rs",
+        ".rb",
+        ".sh",
+    }
+    archive_extensions = {".zip", ".tar", ".gz", ".bz2", ".7z"}
+
+    # Classify based on extension sets.
+    if normalized_extension in image_extensions:
+        return "image"
+    if normalized_extension in video_extensions:
+        return "video"
+    if normalized_extension in audio_extensions:
+        return "audio"
+    if normalized_extension in document_extensions:
+        return "document"
+    if normalized_extension in data_extensions:
+        return "data"
+    if normalized_extension in code_extensions:
+        return "code"
+    if normalized_extension in archive_extensions:
+        return "archive"
+
+    return "other"

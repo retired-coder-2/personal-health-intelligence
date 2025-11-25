@@ -4,6 +4,7 @@ a tiny nested folder structure using a temporary directory as our playground,
 and that `build_file_catalog` can describe those files as a table of metadata.
 """
 
+# from email.mime import base
 from pathlib import Path
 import pandas as pd
 
@@ -63,6 +64,7 @@ def test_build_file_catalog_basic_metadata(tmp_path: Path) -> None:
         "directory",
         "name",
         "extension",
+        "file_type",
         "size_bytes",
         "created_at",
         "modified_at",
@@ -89,3 +91,35 @@ def test_build_file_catalog_basic_metadata(tmp_path: Path) -> None:
 
     assert pd.notnull(first_file_row["created_at"])
     assert pd.notnull(first_file_row["modified_at"])
+
+
+def test_build_file_catalog_file_type_classification(tmp_path: Path) -> None:
+    """
+    Because we want files to be grouped into meaningful categories like
+    'image', 'audio', and 'code', this test creates one file of each kind
+    and checks that the catalog assigns the correct file_type.
+    """
+    base_directory = tmp_path
+
+    image_file = base_directory / "photo.jpg"
+    image_file.write_text("fake image bytes")
+
+    audio_file = base_directory / "song.mp3"
+    audio_file.write_text("fake audio bytes")
+
+    code_file = base_directory /"script.py"
+    code_file.write_text("print('hello')")
+
+    file_catalog = build_file_catalog(base_directory)
+
+    #Helper to get file types for a specific file name
+
+    def get_file_type_for_name(file_name: str) -> str:
+        matching_rows = file_catalog.loc[file_catalog["name"] == file_name]
+        assert len(matching_rows) == 1
+        row = matching_rows.iloc[0]
+        return str(row["file_type"])
+
+    assert get_file_type_for_name("photo.jpg") == "image"
+    assert get_file_type_for_name("song.mp3") == "audio"
+    assert get_file_type_for_name("script.py") == "code"
