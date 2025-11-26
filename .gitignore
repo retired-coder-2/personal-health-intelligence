@@ -23,6 +23,7 @@ MANIFEST
 venv/
 env/
 ENV/
+*mini_labs
 
 # Testing
 .pytest_cache/
