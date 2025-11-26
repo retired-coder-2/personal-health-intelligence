@@ -19,18 +19,19 @@ def main() -> None:
     of the file catalog built by `build_file_catalog`.
     """
 
+    # 0. Page Setup --
     st.set_page_config(
-        page_title= "File Commander - Level 3",
+        page_title= "File Commander - Level 5",
         layout = "wide"
     )
 
-    st.title("📁 File Commander — Level 3")
+    st.title("📁 File Commander — Level 4")
     st.write(
         "Type a directory path click 'Scan directory' ,"
         "and we will show a table of files"
     )
 
-    #1 Take input from user.
+    #1a Take input from user: Directory to scan
     directory_text = st.text_input(
         label= "Directory to scan",
         help="Enter a folder path, for example: /Users/yourname/Documents"
@@ -40,6 +41,25 @@ def main() -> None:
     target_directory: Optional[Path] = None
     if directory_text:
         target_directory = Path(directory_text).expanduser()
+
+# 1b. Take input for destination directory (for future actions).
+# this is separate from the scan directory.
+    destination_text = st.text_input(
+        label="Destination directory for actions (future)",
+        help= (
+                "Enter a folder path where files could be moved, e.g."
+                " /Users/yourname/Desktop/archive"
+        ),
+    )
+
+    destination_directory: Optional[Path] = None
+    if destination_text:
+        destination_directory = Path(destination_text).expanduser()
+
+        #Show the current destination choice so we can visually verify it.
+        if destination_directory is not None:
+            st.info(f"Planned destination directory: {destination_directory}")
+
 
     #2 Only do the scan when the button is pressed.
     if st.button("🔍 Scan directory"):
@@ -57,6 +77,8 @@ def main() -> None:
 
 
         st.success(f"Scan complete. Found {len(file_catalog)} files.")
+
+        
         #Sidebar filters.
         st.sidebar.header("Filters")
 
@@ -92,25 +114,6 @@ def main() -> None:
         st.subheader("File catalog (filtered)")
         st.caption("Sorted by modified_at (newest first).")
         st.dataframe(filtered_catalog, width="stretch")
-
-        # if not target_directory:
-        #     st.error("Please enter a directory path.")
-        #     return
-        # if not target_directory.exists():
-        #     st.error(f"Path does not exist: {target_directory}")
-        #     return
-        # if not target_directory.is_dir():
-        #     st.error(f"Path is not a directory: {target_directory}")
-
-        # #3 Valid path -> build the catalog.
-        # with st.spinner(f"Scanning {target_directory}..."):
-        #     file_catalog = build_file_catalog(target_directory)
-
-        # st.success(f"Scan complete. Found {len(file_catalog)} files.")
-
-        # #4. Show a small preview of the table.
-        # st.subheader("File catalog preview.")
-        # st.dataframe(file_catalog.head(20), width='stretch')
 
 if __name__ == "__main__":
     main()
