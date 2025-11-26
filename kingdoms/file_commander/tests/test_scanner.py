@@ -68,6 +68,7 @@ def test_build_file_catalog_basic_metadata(tmp_path: Path) -> None:
         "size_bytes",
         "created_at",
         "modified_at",
+        "last_accessed_at",
     }
     assert expected_columns.issubset(set(file_catalog.columns))
 
@@ -91,6 +92,7 @@ def test_build_file_catalog_basic_metadata(tmp_path: Path) -> None:
 
     assert pd.notnull(first_file_row["created_at"])
     assert pd.notnull(first_file_row["modified_at"])
+    assert pd.notnull(first_file_row["last_accessed_at"])
 
 
 def test_build_file_catalog_file_type_classification(tmp_path: Path) -> None:

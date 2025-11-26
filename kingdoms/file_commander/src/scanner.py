@@ -78,7 +78,8 @@ def build_file_catalog(root: Path | str) -> pd.DataFrame:
             "file_type": classify_file_type(file_extension),
             "size_bytes": file_stat.st_size,
             "created_at": datetime.fromtimestamp(file_stat.st_ctime),
-            "modified_at": datetime.fromtimestamp(file_stat.st_mtime)
+            "modified_at": datetime.fromtimestamp(file_stat.st_mtime),
+            "last_accessed_at": datetime.fromtimestamp(file_stat.st_atime)
         }
 
         file_records.append(file_record)
@@ -93,6 +94,7 @@ def build_file_catalog(root: Path | str) -> pd.DataFrame:
         "size_bytes",
         "created_at",
         "modified_at",
+        "last_accessed_at",
     ]
 
     file_catalog = pd.DataFrame.from_records(file_records) [expected_column_order]
