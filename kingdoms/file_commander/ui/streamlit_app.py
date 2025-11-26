@@ -37,10 +37,21 @@ def main() -> None:
     )
 
     # Convert the string to a Path (now we can use .exists(), .is_dir(), etc.).
-    target_directory = Path(directory_text).expanduser() if directory_text else None
+    target_directory: Optional[Path] = None
+    if directory_text:
+        target_directory = Path(directory_text).expanduser()
 
     #2 Only do the scan when the button is pressed.
     if st.button("🔍 Scan directory"):
+        if target_directory is None:
+            st.error("Please enter a directory path.")
+            return
+        if not target_directory.exists():
+            st.error(f"Path does not exist {target_directory}")
+
+        if not target_directory.is_dir():
+            st.error(f"Path is not a directory: {target_directory}")
+
         with st.spinner(f"Scanning {target_directory}..."):
             file_catalog = build_file_catalog(target_directory)
 
@@ -73,10 +84,10 @@ def main() -> None:
             ]
 
         if minimum_size_mb > 0:
-            minimum_size_mb = minimum_size_mb *1024 * 1024
-            filtered_catalog = filtered_catalog.sort_values(
-                "modified_at", ascending=False
-            )
+            minimum_size_bytes = minimum_size_mb * 1024 * 1024
+            filtered_catalog = filtered_catalog[filtered_catalog["size_bytes"] >= minimum_size_bytes]
+
+            filtered_catalog = filtered_catalog.sort_values("modified_at", ascending=False)
 
         st.subheader("File catalog (filtered)")
         st.caption("Sorted by modified_at (newest first).")
