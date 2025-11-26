@@ -8,7 +8,7 @@ size and timestamps for our file catalog pipeline.
 
 from pathlib import Path
 from datetime import datetime
-# from typing import Iterable
+from typing import Union
 
 import pandas as pd
 
@@ -44,8 +44,9 @@ def list_files(root: Path) -> list[Path]:
 
     return file_paths
 
-def build_file_catalog(root: Path) -> pd.DataFrame:
+def build_file_catalog(root: Path | str) -> pd.DataFrame:
     """
+    :param root: The directory to scan (Path or string).
     Because we want a table-like catalog of our files that is easy to query,
     this function walks the directory tree starting at `root`, collects
     metadata for each file, and returns a pandas DataFrame.
