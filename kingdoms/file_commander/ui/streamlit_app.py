@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 import streamlit as st
 from src.scanner import build_file_catalog
+from typing import Optional
 
 
 def main() -> None:
