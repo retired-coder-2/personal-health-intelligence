@@ -41,7 +41,8 @@ def main() -> None:
     #2 Only do the scan when the button is pressed.
     if st.button("🔍 Scan directory"):
         with st.spinner(f"Scanning {target_directory}..."):
-            file_catalog = build_file_catalog(directory_text)
+            file_catalog = build_file_catalog(target_directory)
+
 
         st.success(f"Scan complete. Found {len(file_catalog)} files.")
         #Sidebar filters.
