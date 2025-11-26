@@ -11,27 +11,28 @@ from src.scanner import build_file_catalog
 
 
 def main() -> None:
-    """Because we want a simple, interactive front-end for our file catalog,
-    this function defines the layout and behavior of the Streamlit page.
+    """Level 2:
+    Because we want to tell the app which folder to work with, this version
+    adds a text box where we can type a directory path and then shows
+    the path back to us.
     """
 
-    #Basic page configuration title and layout
     st.set_page_config(
-        page_title= "File Commander - Catalog Explorer",
+        page_title= "File Commander - Level 2",
         layout = "wide"
     )
 
-    st.title("📁 File Commander — Catalog Explorer")
-    st.write("This is the simplest possible version of our app.")
+    st.title("📁 File Commander — Level 2")
+    st.write("Type a directory path below and we will echo it back.")
 
-    # st.markdown(
-    #     """ Use this tool to scan a directory, classify its files by type,
-    #     and explore them in a table you can filter and sort."""
-    # )
+    #1 Take input from user.
+    directory_text = st.text_input(
+        label= "Directory to use",
+        help="Enter a folder path, for example: /Users/yourname/Documents"
+    )
 
-    # #Default directory is the user's Downloads folder, but the user can change it.
-
-    # default_directory = Path.home() / "Downloads"
+    #2 Show what the user typed.
+    st.write("You entered:", directory_text)
 
 if __name__ == "__main__":
     main()
