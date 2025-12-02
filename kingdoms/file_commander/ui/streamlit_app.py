@@ -8,11 +8,26 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
+import sys
 
 import pandas as pd
 import streamlit as st
 
+# ---------------------------------------------------------------------
+# Make sure the file_commander folder is on sys.path so we can import
+# src.scanner no matter where Streamlit launches from.
+#
+# __file__ = .../kingdoms/file_commander/ui/streamlit_app.py
+# parents[0] = ui
+# parents[1] = file_commander   <-- we want this on sys.path
+# ---------------------------------------------------------------------
+FILE_COMMANDER_ROOT = Path(__file__).resolve().parents[1]
+if str(FILE_COMMANDER_ROOT) not in sys.path:
+    sys.path.insert(0, str(FILE_COMMANDER_ROOT))
+
 from src.scanner import build_file_catalog
+
+
 
 
 
@@ -218,6 +233,26 @@ def main() -> None:
         #   "Use the 'selected' column to mark files for a dry-run move preview. "
         #   "This does not change your filesystem."
         # )
+        st.dataframe(filtered_catalog, width="stretch")
+
+
+        # ---------------------------------------------------------
+        # New: allow the user to download the current filtered view
+        # as a CSV file.
+        #
+        # 1. Convert filtered_catalog (a DataFrame) into CSV text.
+        # 2. Encode the text as UTF-8 bytes, which Streamlit expects.
+        # 3. Feed those bytes into st.download_button so the browser
+        #    offers a .csv file to save.
+        # ---------------------------------------------------------
+        csv_bytes = filtered_catalog.to_csv(index= False).encode("utf-8")
+
+        st.download_button(
+            label="⬇️ Download filtered catalog as CSV",
+            data=csv_bytes,
+            file_name= "file_commander_filtered.csv",
+            mime="text/csv",
+        )
 
         if filtered_catalog.empty:
             st.warning("No files match the current filters.")
