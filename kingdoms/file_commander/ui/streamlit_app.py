@@ -25,7 +25,7 @@ FILE_COMMANDER_ROOT = Path(__file__).resolve().parents[1]
 if str(FILE_COMMANDER_ROOT) not in sys.path:
     sys.path.insert(0, str(FILE_COMMANDER_ROOT))
 
-from src.scanner import build_file_catalog
+from src.scanner import build_file_catalog  # noqa: E402  (import after sys.path setup on purpose)
 
 
 
