@@ -15,18 +15,34 @@ import pandas as pd
 import streamlit as st
 
 # ---------------------------------------------------------------------
-# Make sure the file_commander folder is on sys.path so we can import
-# src.scanner no matter where Streamlit launches from.
+# PATH SETUP FOR IMPORTS
+#
+# We want BOTH of these folders on sys.path:
+#   - kingdoms/file_commander   (so we can import src.scanner)
+#   - project root              (so we can import shared.database)
 #
 # __file__ = .../kingdoms/file_commander/ui/streamlit_app.py
 # parents[0] = ui
-# parents[1] = file_commander   <-- we want this on sys.path
+# parents[1] = file_commander        (FILE_COMMANDER_ROOT)
+# parents[2] = kingdoms              (PROJECT_ROOT candidate, but our root
+#                                     is actually one level above kingdoms)
 # ---------------------------------------------------------------------
-FILE_COMMANDER_ROOT = Path(__file__).resolve().parents[1]
-if str(FILE_COMMANDER_ROOT) not in sys.path:
-    sys.path.insert(0, str(FILE_COMMANDER_ROOT))
+CURRENT_FILE = Path(__file__).resolve()
+FILE_COMMANDER_ROOT = CURRENT_FILE.parents[1]   # .../kingdoms/file_commander
+PROJECT_ROOT = CURRENT_FILE.parents[2].parent   # up to .../personal-health-intelligence
 
-from src.scanner import build_file_catalog  # noqa: E402  (import after sys.path setup on purpose)
+for path in (FILE_COMMANDER_ROOT, PROJECT_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+
+# SQLite DB will live next to file_commander: .../kingdoms/file_commander/file_commander.db
+DB_PATH = FILE_COMMANDER_ROOT / "file_commander.db"
+
+# ---------------------------------------------------------------------
+# Imports that depend on the paths above
+# ---------------------------------------------------------------------
+from src.scanner import build_file_catalog              # noqa: E402
+from shared.database.database import get_sqlite_engine  # noqa: E402
 
 
 
@@ -135,6 +151,47 @@ def main() -> None:
         # Store in session so we can reuse it across reruns.
         # This is always the full, original scan result (never filtered).
         st.session_state["file_catalog"] = file_catalog
+
+         # -----------------------------------------------------------------
+        # NEW: Save the catalog to SQLite so it lives beyond this session.
+        #
+        # Flow:
+        #   1. Ask our shared.database helper for a SQLite engine.
+        #   2. Use DataFrame.to_sql(...) to write into a table
+        #      called "file_catalog".
+        #   3. if_exists="replace" means:
+        #         - if table doesn't exist -> create it
+        #         - if it does exist -> drop & re-create with new data
+        #
+        # This gives us one "truth table" per scan that other tools
+        # (DBeaver, mini_labs, future ML, etc.) can query.
+        # -----------------------------------------------------------------
+
+
+        try:
+            # 1. Build a SQLite engine pointed at kingdoms/file_commander/file_commander.db
+            engine = get_sqlite_engine(DB_PATH)
+
+            # 2. Write the DataFrame into a table named "file_catalog".
+            #    if_exists="replace" = drop & recreate the table on each scan.
+            file_catalog.to_sql(
+                "file_catalog",          # table name
+                con=engine,
+                if_exists="replace",
+                index=False,             # don't store the DataFrame index
+            )
+
+            st.info(
+                f"Catalog saved to SQLite at {DB_PATH} (table: file_catalog)."
+            )
+
+        except Exception as exc:
+            # We don't want the whole app to die if DB write fails.
+            # Just warn and keep going with the in-memory catalog.
+            st.warning(f"Could not save catalog to database: {exc}")
+
+
+
 
         st.success(f"Scan complete. Found {len(file_catalog)} files.")
 
