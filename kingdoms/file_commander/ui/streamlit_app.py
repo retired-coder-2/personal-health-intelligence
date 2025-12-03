@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
+from difflib import SequenceMatcher
 import sys
 
 import pandas as pd
@@ -26,6 +27,12 @@ if str(FILE_COMMANDER_ROOT) not in sys.path:
     sys.path.insert(0, str(FILE_COMMANDER_ROOT))
 
 from src.scanner import build_file_catalog  # noqa: E402  (import after sys.path setup on purpose)
+
+
+
+def fuzzy_match(a: str, b:str, threshold: float= 0.7) -> bool:
+    """Return True if a and b are similar enough."""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio() >= threshold
 
 
 
@@ -150,6 +157,12 @@ def main() -> None:
     if file_catalog is not None and not file_catalog.empty:
         st.sidebar.header("Filters")
 
+        #New: Search by name
+        search_text = st.sidebar.text_input(
+            "Search by name or folder",
+            key="search_text"
+        ).strip()
+
         # File type filter (multiselect)
         unique_file_types = sorted(file_catalog["file_type"].unique())
         selected_file_types = st.sidebar.multiselect(
@@ -158,26 +171,30 @@ def main() -> None:
             default=unique_file_types,
         )
 
+
+
         # Minimum size filter
         minimum_size_mb = st.sidebar.number_input(
             label="Minimum size (MB)",
             min_value=0.0,
-            value=0.0,
-            step=1.0,
-            help="Only show files at or above this size.",
-        )
+            value=st.session_state.get("minimum_size_mb", 0.0),
+            key="minimum_size_mb"
+)
 
         # Stale filter (last accessed more than N days ago)
         stale_days = st.sidebar.number_input(
             label="Stale if not accessed in (days)",
             min_value=0,
-            value=0,
-            step=30,
-            help=(
-                "Set this to a positive number to show only files that have "
-                "not been accessed for at least this many days."
-            ),
+            value=st.session_state.get("stale_days", 0),
+            key="stale_days"
         )
+
+        if st.sidebar.button("Reset filters"):
+            st.session_state["search_text"] = ""
+            st.session_state["minimum_size_mb"] = 0
+            st.session_state["stale_days"] = 0
+            st.rerun()
+
 
         # ---------------------------------------------------------------------
         # Apply filters starting from the full catalog every time.
@@ -205,6 +222,26 @@ def main() -> None:
             filtered_catalog = filtered_catalog[
                 filtered_catalog["last_accessed_at"] < cutoff_timestamp
             ]
+        # 4️⃣ Search filter (by name OR directory, using fuzzy_match)
+        # If the user typed something into `search_text`, we keep only
+        # the rows where EITHER:
+        #   - the file name is similar to the search text
+        #   - OR the directory path is similar to the search text
+        if search_text:
+            filtered_catalog = filtered_catalog[
+                filtered_catalog.apply(
+                    lambda row: (
+                        fuzzy_match(search_text, row["name"])
+                        or fuzzy_match(search_text, row["directory"])
+                    ),
+                    axis=1,
+                )
+            ]
+
+
+        # filtered_catalog = filtered_catalog[filtered_catalog["name"].str.contains(search_text, case = False, na= False)]
+
+
 
         # 4️⃣ Sort by modified_at (newest first)
         if not filtered_catalog.empty:
@@ -274,7 +311,7 @@ def main() -> None:
             catalog_for_edit,
             key="file_catalog_editor",
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
         # ---------------------------------------------------------------------
@@ -315,7 +352,7 @@ def main() -> None:
                 "These files would be moved (in a future version) from their "
                 "current locations to the destination directory:"
             )
-            st.dataframe(preview_df, use_container_width=True)
+            st.dataframe(preview_df, width="stretch")
             # st.dataframe(filtered_catalog, width="stretch")
 
     else:
