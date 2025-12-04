@@ -108,30 +108,72 @@ def classify_file_type(extension: str) -> str:
     Because we want to group files by their general purpose instead of just
     their raw extension, this helper takes a file extension like ".jpg"
     and returns a broader category such as "image" or "code".
+
+    This version is "Kingdom 1.5" – it uses what we learned from the
+    real catalog ('other' analysis) to classify more extensions correctly.
     """
 
-    normalized_extension = extension.lower()
+    # Normalize to lower-case, strip spaces, and ensure it starts with a dot.
+    normalized_extension = extension.lower().strip()
+    if normalized_extension and not normalized_extension.startswith("."):
+        normalized_extension = "." + normalized_extension
 
-    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
-    video_extensions = {".mp4", ".mkv", ".mov", ".avi"}
-    audio_extensions = {".mp3", ".wav", ".flac", ".aac"}
-    document_extensions = {".txt", ".md", ".pdf", ".doc", ".docx", ".rtf"}
-    data_extensions = {".csv", ".tsv", ".xls", ".xlsx", ".parquet", ".json"}
-    code_extensions = {
-        ".py",
-        ".js",
-        ".ts",
-        ".java",
-        ".c",
-        ".cpp",
-        ".go",
-        ".rs",
-        ".rb",
-        ".sh",
+    # ---- Core media types ---------------------------------------------------
+    image_extensions = {
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
+        ".heic", ".heif", ".tiff", ".tif", ".nef", ".svg",
     }
-    archive_extensions = {".zip", ".tar", ".gz", ".bz2", ".7z"}
 
-    # Classify based on extension sets.
+    video_extensions = {
+        ".mp4", ".mkv", ".mov", ".avi", ".3gp",
+    }
+
+    audio_extensions = {
+        ".mp3", ".wav", ".flac", ".aac", ".m4a", ".ogg",
+    }
+
+    # ---- Documents / reading ------------------------------------------------
+    document_extensions = {
+        ".txt", ".md", ".pdf", ".doc", ".docx", ".rtf",
+        ".ppt", ".pptx",
+        ".epub", ".mobi",
+    }
+
+    # ---- Data / analytics ---------------------------------------------------
+    data_extensions = {
+        ".csv", ".tsv",
+        ".xls", ".xlsx",
+        ".parquet",
+        ".json",
+        ".xml",
+    }
+
+    # ---- Code & web artifacts ----------------------------------------------
+    code_extensions = {
+        # General programming
+        ".py", ".js", ".ts", ".java", ".c", ".cpp", ".go", ".rs",
+        ".rb", ".sh",
+
+        # Node / web build artifacts
+        ".cjs", ".mjs", ".map", ".node", ".wasm",
+        ".css", ".html",
+    }
+
+    # ---- Archives / compressed ---------------------------------------------
+    archive_extensions = {
+        ".zip", ".tar", ".gz", ".bz2", ".7z", ".rar",
+    }
+
+    # ---- Installers & disk images ------------------------------------------
+    installer_extensions = {
+        ".dmg",           # macOS disk image
+        ".pkg",           # macOS installer package
+        ".msi",           # Windows installer
+        ".ova",           # VM image
+        ".vbox-extpack",  # VirtualBox extension
+    }
+
+    # ---- Classification -----------------------------------------------------
     if normalized_extension in image_extensions:
         return "image"
     if normalized_extension in video_extensions:
@@ -146,5 +188,8 @@ def classify_file_type(extension: str) -> str:
         return "code"
     if normalized_extension in archive_extensions:
         return "archive"
+    if normalized_extension in installer_extensions:
+        return "installer"
 
+    # Fallback: keep anything unknown in 'other' so we can analyze it later.
     return "other"

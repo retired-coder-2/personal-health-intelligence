@@ -284,16 +284,40 @@ def main() -> None:
         # the rows where EITHER:
         #   - the file name is similar to the search text
         #   - OR the directory path is similar to the search text
+        # if search_text: ----- ### this is for fuzzy logic -- currently not working
+        #     filtered_catalog = filtered_catalog[
+        #         filtered_catalog.apply(
+        #             lambda row: (
+        #                 fuzzy_match(search_text, row["name"])
+        #                 or fuzzy_match(search_text, row["directory"])
+        #             ),
+        #             axis=1,
+        #         )
+        #     ]
+
+        # 4️⃣ Search filter (simple "contains" search across name, directory, and extension)-- replaces
+        #fuzzy logic above
+        #
+        # Because we want users to be able to type things like "pdf", "resume",
+        # or part of a folder name, we do a case-insensitive substring search
+        # instead of fuzzy matching.
         if search_text:
+            search_lower = search_text.lower()
+
+            name_matches = filtered_catalog["name"].str.lower().str.contains(
+                search_lower, na=False
+            )
+            dir_matches = filtered_catalog["directory"].str.lower().str.contains(
+                search_lower, na=False
+            )
+            ext_matches = filtered_catalog["extension"].str.lower().str.contains(
+                search_lower, na=False
+            )
+
             filtered_catalog = filtered_catalog[
-                filtered_catalog.apply(
-                    lambda row: (
-                        fuzzy_match(search_text, row["name"])
-                        or fuzzy_match(search_text, row["directory"])
-                    ),
-                    axis=1,
-                )
+                name_matches | dir_matches | ext_matches
             ]
+
 
 
         # filtered_catalog = filtered_catalog[filtered_catalog["name"].str.contains(search_text, case = False, na= False)]
